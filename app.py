@@ -17,13 +17,14 @@ client = pymongo.MongoClient("mongodb+srv://student0:student0@studentid.8h5vs.mo
 #print(db.list_collection_names())
 db=client.school_db
 students=db.students
+subjects=db.subjects
+student_marks=db.student_marks
 #Id:objectId, name: string, email: string, password: string, percentage : float
 
 
 @app.task
-def addStudent(id,name,email,password):
+def addStudent(name,email,password):
     stu_doc={
-        "id":id,
         "name":str(name),
         "email":str(email),
         "password":str(password),
@@ -31,7 +32,32 @@ def addStudent(id,name,email,password):
     }
     students.insert(stu_doc)
 
+@app.task
+def addSubjects(subject):
+    sub_doc={
+        'name':str(subject)
+    }
+    subjects.insert(sub_doc)
 
-# print(client.list_database_names())
-# print(db.list_collection_names())
-# print(students.find_one({"name":"likhith"}))
+@app.task
+def addMarks(stuName,subName,marks):
+    stu_id=students.find_one({'name':str(stuName)})
+    stu_id=str(stu_id['_id'])
+    sub_id=subjects.find_one({'name':str(subName)})
+    sub_id=str(sub_id['_id'])
+    marks_doc={
+        'student_id':stu_id,
+        'subject_id':sub_id,
+        'marks':marks
+    }
+    student_marks.insert(marks_doc)
+
+print(client.list_database_names())
+print(db.list_collection_names())
+for each in students.find({}):
+    print(each)
+for each in subjects.find({}):
+    print(each)
+for each in student_marks.find({}):
+    print(each)
+
