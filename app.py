@@ -34,7 +34,7 @@ number_of_subjects=0
 @app.route("/addStudent/values?name=<name>email=<email>password=<password>")
 def addingStudent(name,email,password):
     addStudent.delay(name,email,password)
-    return OK
+    return('ok')
 
 @celery.task(name="app.addStudent")
 def addStudent(name,email,password):
