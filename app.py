@@ -1,15 +1,22 @@
-# from flask import Flask
+from flask import Flask
 # from flask_pymongo import pymongo
-# import json
+import json
 # from bson.objectid import ObjectId
 import pymongo
 import bson
 from celery import Celery
+from flask_celery import make_celery
 broker_url='amqp://localhost//'
 backend_url='mongodb+srv://student0:<password>@studentid.8h5vs.mongodb.net/<dbname>?retryWrites=true&w=majority'
-app = Celery('app', broker=broker_url, backend='mongodb+srv://student0:student0@studentid.8h5vs.mongodb.net/<dbname>?retryWrites=true&w=majority')
+api = Celery('app', broker=broker_url, backend='mongodb+srv://student0:student0@studentid.8h5vs.mongodb.net/<dbname>?retryWrites=true&w=majority')
 
-@app.task
+
+app=Flask(__name__)
+app.config['CELERY_BROKER_URL']='amqp://localhost//'
+app.config['CELERY_RESULT_BACKEND']='mongodb+srv://student0:<password>@studentid.8h5vs.mongodb.net/<dbname>?retryWrites=true&w=majority'
+celery=make_celery(app)
+
+@app.route('/hello')
 def hello():
     return("hello world")
 
@@ -24,8 +31,31 @@ global number_of_subjects
 number_of_subjects=0
 #Id:objectId, name: string, email: string, password: string, percentage : float
 
+@app.route("/addStudent/values/<name>/<email>/<password>")
+def addingStudent(name,email,password):
+    addStudent.delay(name,email,password)
+    return('ok')
 
-@app.task
+@app.route("/addSubjects/values/<name>")
+def addingSubject(name):
+    addSubjects.delay(name)
+    return('ok')
+
+@app.route("/addMarks/values/<name>/<subject>/<marks>")
+def addingMarks(name,subject,marks):
+    addMarks.delay(name,subject,marks)
+    return('ok')
+
+@app.route("/display/<name>")
+def display(name):
+    report = students.find({'name':name})
+    output = []
+    for doc in report:
+        doc['_id'] = str(doc['_id'])
+        output.append(doc)
+    return json.dumps(output)
+
+@celery.task(name="app.addStudent")
 def addStudent(name,email,password):
     stu_doc={
         "name":str(name),
@@ -35,7 +65,7 @@ def addStudent(name,email,password):
     }
     students.insert(stu_doc)
 
-@app.task
+@celery.task(name="app.addSubjects")
 def addSubjects(subject):
     sub_doc={
         'name':str(subject)
@@ -43,7 +73,7 @@ def addSubjects(subject):
     subjects.insert(sub_doc)
 
 
-@app.task
+@celery.task(name="app.addMarks")
 def addMarks(stuName,subName,marks):
     stu_id=students.find_one({'name':str(stuName)})
     stu_id=str(stu_id['_id'])
@@ -74,12 +104,14 @@ def addMarks(stuName,subName,marks):
         )
 
 
-print(client.list_database_names())
-print(db.list_collection_names())
-for each in students.find({}):
-    print(each)
-for each in subjects.find({}):
-    print(each)
-for each in student_marks.find({}):
-    print(each)
+# print(client.list_database_names())
+# print(db.list_collection_names())
+# for each in students.find({}):
+#     print(each)
+# for each in subjects.find({}):
+#     print(each)
+# for each in student_marks.find({}):
+#     print(each)
 
+if(__name__ == '__main__'):
+    app.run(debug=True)
