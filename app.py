@@ -1,6 +1,6 @@
 from flask import Flask
 # from flask_pymongo import pymongo
-# import json
+import json
 # from bson.objectid import ObjectId
 import pymongo
 import bson
@@ -31,10 +31,29 @@ global number_of_subjects
 number_of_subjects=0
 #Id:objectId, name: string, email: string, password: string, percentage : float
 
-@app.route("/addStudent/values?name=<name>email=<email>password=<password>")
+@app.route("/addStudent/values/<name>/<email>/<password>")
 def addingStudent(name,email,password):
     addStudent.delay(name,email,password)
     return('ok')
+
+@app.route("/addSubjects/values/<name>")
+def addingSubject(name):
+    addSubjects.delay(name)
+    return('ok')
+
+@app.route("/addMarks/values/<name>/<subject>/<marks>")
+def addingMarks(name,subject,marks):
+    addMarks.delay(name,subject,marks)
+    return('ok')
+
+@app.route("/display/<name>")
+def display(name):
+    report = students.find({'name':name})
+    output = []
+    for doc in report:
+        doc['_id'] = str(doc['_id'])
+        output.append(doc)
+    return json.dumps(output)
 
 @celery.task(name="app.addStudent")
 def addStudent(name,email,password):
@@ -85,14 +104,14 @@ def addMarks(stuName,subName,marks):
         )
 
 
-print(client.list_database_names())
-print(db.list_collection_names())
-for each in students.find({}):
-    print(each)
-for each in subjects.find({}):
-    print(each)
-for each in student_marks.find({}):
-    print(each)
+# print(client.list_database_names())
+# print(db.list_collection_names())
+# for each in students.find({}):
+#     print(each)
+# for each in subjects.find({}):
+#     print(each)
+# for each in student_marks.find({}):
+#     print(each)
 
 if(__name__ == '__main__'):
     app.run(debug=True)
