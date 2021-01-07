@@ -3,6 +3,7 @@
 # import json
 # from bson.objectid import ObjectId
 import pymongo
+import bson
 from celery import Celery
 broker_url='amqp://localhost//'
 backend_url='mongodb+srv://student0:<password>@studentid.8h5vs.mongodb.net/<dbname>?retryWrites=true&w=majority'
@@ -19,6 +20,8 @@ db=client.school_db
 students=db.students
 subjects=db.subjects
 student_marks=db.student_marks
+global number_of_subjects
+number_of_subjects=0
 #Id:objectId, name: string, email: string, password: string, percentage : float
 
 
@@ -39,6 +42,7 @@ def addSubjects(subject):
     }
     subjects.insert(sub_doc)
 
+
 @app.task
 def addMarks(stuName,subName,marks):
     stu_id=students.find_one({'name':str(stuName)})
@@ -51,6 +55,24 @@ def addMarks(stuName,subName,marks):
         'marks':marks
     }
     student_marks.insert(marks_doc)
+    tot_subjects=student_marks.find({'student_id':stu_id}).count()
+    number_of_subjects=subjects.find({}).count()
+    if(tot_subjects==number_of_subjects):
+        sum_of_marks=0
+        for each in subjects.find({}):
+            subId=str(each['_id'])
+            marks_in_each=student_marks.find({'student_id':stu_id,'subject_id':subId})
+            for doc in marks_in_each:
+                print(doc['marks'])
+                sum_of_marks+=int(doc['marks'])
+            #marks_in_each=int(marks_in_each['marks'])
+        percent=sum_of_marks/number_of_subjects
+        students.update_one(
+            {'name':stuName},
+            {'$set':{'percentage':percent}},
+            upsert=True
+        )
+
 
 print(client.list_database_names())
 print(db.list_collection_names())
